@@ -50,7 +50,23 @@ app.get('/todos/:id',(req,res) => {
     res.send({id: "Id is invalid"})
     console.log('Id is invalid')
   }
+})
 
+app.delete('/todos/:id',(req,res) =>{
+    var id = req.params.id;
+    if(ObjectID.isValid(id)){
+      todo.findByIdAndRemove({_id : '59f74735d30d263198679129'}).then((todo) => {
+        if(!todo){
+          res.status(400).send();
+        }
+        else{
+            res.send(JSON.stringify(todo,undefined,2));
+        }
+      });
+    }
+    else{
+      res.status(400).send();
+    }
 })
 
 app.listen(port, () => {
