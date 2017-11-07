@@ -6,6 +6,7 @@ const {mongoose} = require('./mongoose/mongoose.js');
 const {todo} = require('./models/todo.js');
 const {user} = require('./models/user.js');
 const {authenticate} = require('./middleware/authenticate.js');
+const bcryptjs = require('bcryptjs');
 
 var port = process.env.PORT || 3000;
 var app = express();
@@ -14,6 +15,7 @@ app.use(bodyparser.json());
 
 app.post('/users',(req,res) => {
   var body = _.pick(req.body,["email","password"]);
+  //console.log(hashedPassword);
   var users = new user({
     email : body.email,
     password : body.password
