@@ -6,7 +6,7 @@ const {mongoose} = require('./mongoose/mongoose.js');
 const {todo} = require('./models/todo.js');
 const {user} = require('./models/user.js');
 const {authenticate} = require('./middleware/authenticate.js');
-const bcryptjs = require('bcryptjs');
+
 
 var port = process.env.PORT || 3000;
 var app = express();
@@ -115,6 +115,28 @@ app.patch('/todos/:id', (req,res) =>{
 
 app.get('/users/me',authenticate,(req,res) => {
   res.send({_id : req.users._id , email : req.users.email})
+})
+
+app.post('/users/login',(req,res) => {
+  //var body = req.body;
+  var body = _.pick(req.body,['email','password']);
+
+  user.findbyCredentials(body.email,body.password).then((result) => {
+    return result.generateAuthToken().then((token) => {
+      res.header('x-auth',token).send({_id : result._id , email : result.email});
+    });
+  }).catch((e) => {
+    res.status(401).send();
+  });
+  //res.send(body);
+});
+
+app.delete('/users/me/token',authenticate,(req,res) => {
+  req.users.deleteToken(req.token).then((reult) => {
+    res.status(200).send();
+  },() => {
+    res.status(401).send();
+  })
 })
 
 app.listen(port, () => {

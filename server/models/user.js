@@ -2,7 +2,6 @@ const mongoose = require('mongoose');
 const validator = require('validator');
 const jwt = require('jsonwebtoken');
 const _ = require('lodash');
-
 const bcryptjs = require('bcryptjs');
 //Creating a schema
 var UserSchema = new mongoose.Schema({
@@ -36,6 +35,17 @@ var UserSchema = new mongoose.Schema({
   }]
 });
 
+UserSchema.methods.deleteToken = function(token){
+  var user = this;
+
+  return  user.update({
+    $pull : {
+      tokens : {
+        token
+      }
+    }
+  });
+};
 
 UserSchema.methods.generateAuthToken = function() {
   var user = this;
@@ -47,6 +57,29 @@ UserSchema.methods.generateAuthToken = function() {
     return token;
   })
 }
+
+UserSchema.statics.findbyCredentials = function(email,password){
+  var User = this;
+  return User.findOne({email}).then((res) => {
+    if(!res.length){
+      return new Promise((resolve,reject) => {
+        bcryptjs.compare(password,res.password,(err,result) => {
+          if(result){
+            resolve(res);
+          }
+          else{
+            reject();
+          }
+        })
+      })
+      }
+      else{
+        Promise.reject();
+      }
+    }).catch((e) => {
+    return Promise.reject();
+  })
+};
 
 UserSchema.statics.findByToken = function(token) {
   var User = this;
