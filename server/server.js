@@ -29,10 +29,12 @@ app.post('/users',(req,res) => {
   });
 });
 
-app.post('/todos',(req,res) => {
+app.post('/todos',authenticate,(req,res) => {
+  console.log(req.users);
   var todo_new = new todo({
     text : req.body.text,
-    completed : req.body.completed
+    completed : req.body.completed,
+    createdBy : req.users._id
   })
 
   todo_new.save().then((doc) => {
@@ -42,15 +44,23 @@ app.post('/todos',(req,res) => {
   })
 });
 
-app.get('/todos',(req,res) => {
-  todo.find({completed : false}).then((todos) => {
+// app.get('/todos',(req,res) => {
+//   todo.find({completed : false}).then((todos) => {
+//     res.send({todos});
+//   },(e) => {
+//     res.status(400).send(e);
+//   });
+// });
+
+app.get('/todos',authenticate,(req,res) => {
+  todo.find({createdBy : req.users._id}).then((todos) => {
     res.send({todos});
   },(e) => {
     res.status(400).send(e);
   });
 });
 
-app.get('/todos/:id',(req,res) => {
+app.get('/todos/:id',authenticate,(req,res) => {
   var id = req.params.id;
   if(ObjectID.isValid(id))
   {
@@ -60,8 +70,14 @@ app.get('/todos/:id',(req,res) => {
          console.log('Id not found');
       }
       else{
-        res.send(doc);
-        console.log(JSON.stringify(res,undefined,2));
+
+        if(doc.createdBy.toString() == req.users._id.toString()){
+          res.send(doc);
+        }
+        else{
+          res.send("This todo is not created by you. Kindly search the ones created by you")
+        }
+
       }
     })
   }
@@ -71,46 +87,82 @@ app.get('/todos/:id',(req,res) => {
   }
 })
 
-app.delete('/todos/:id',(req,res) =>{
+app.delete('/todos/:id',authenticate,(req,res) =>{
     var id = req.params.id;
     if(ObjectID.isValid(id)){
-      todo.findByIdAndRemove({_id : '59f74735d30d263198679129'}).then((todo) => {
-        if(!todo){
-          res.status(400).send();
+
+      todo.findById(id).then((doc) => {
+        if(!doc){
+          res.send({id: "Id not found"})
+           console.log('Id not found');
         }
         else{
-            res.send(JSON.stringify(todo,undefined,2));
+          if(doc.createdBy.toString() == req.users._id.toString()){
+            todo.findByIdAndRemove({_id : id}).then((todo) => {
+              if(!todo){
+                res.status(400).send();
+              }
+              else{
+                  res.send(JSON.stringify(todo,undefined,2));
+              }
+            })
+          }
+          else{
+            res.send("This todo is not created by you. Kindly delete the ones created by you")
+          }
         }
-      });
+      })
+
+      // todo.findByIdAndRemove({_id : '59f74735d30d263198679129'}).then((todo) => {
+      //   if(!todo){
+      //     res.status(400).send();
+      //   }
+      //   else{
+      //       res.send(JSON.stringify(todo,undefined,2));
+      //   }
+      // });
     }
     else{
       res.status(400).send();
     }
 })
 
-app.patch('/todos/:id', (req,res) =>{
+app.patch('/todos/:id',authenticate,(req,res) =>{
   var id = req.params.id;
   console.log(id);
   var body = _.pick(req.body,["text","completed"]);
 
-  if(_.isBoolean(body.completed) && body.completed){
-    body.completedOn = new Date().getTime();
-  }else{
-    body.completed = false;
-    body.completedOn = null;
-  }
+  todo.findById(id).then((doc) => {
+    if(!doc){
+      res.send({id: "Id not found"})
+       console.log('Id not found');
+    }
+    else{
+      if(doc.createdBy.toString() == req.users._id.toString()){
+        if(_.isBoolean(body.completed) && body.completed){
+          body.completedOn = new Date().getTime();
+        }else{
+          body.completed = false;
+          body.completedOn = null;
+        }
 
-  if(ObjectID.isValid(id)){
-    todo.findByIdAndUpdate(id,{$set : body},{new : true}).then((doc) => {
-      if(!doc){
-        return res.status(400).send();
+        if(ObjectID.isValid(id)){
+          todo.findByIdAndUpdate(id,{$set : body},{new : true}).then((doc) => {
+            if(!doc){
+              return res.status(400).send();
+            }
+            res.send(JSON.stringify(doc,undefined,2));
+          })
+        }
+        else{
+          res.status(400).send();
+        }
       }
-      res.send(JSON.stringify(doc,undefined,2));
-    })
-  }
-  else{
-    res.status(400).send();
-  }
+      else{
+        res.send("This todo is not created by you. Kindly update the ones created by you")
+      }
+    }
+  })
 });
 
 app.get('/users/me',authenticate,(req,res) => {
